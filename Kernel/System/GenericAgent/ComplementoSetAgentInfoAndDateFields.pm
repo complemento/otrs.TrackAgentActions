@@ -54,6 +54,10 @@ sub Run {
     my $DynamicFieldBackendObject = $Kernel::OM->Get('Kernel::System::DynamicField::Backend');
     my $TimeObject = $Kernel::OM->Get('Kernel::System::Time');
     my $Overwrite = "Yes";
+
+	if ( $Param{New}->{Overwrite} ) {
+		$Overwrite = $Param{New}->{Overwrite}
+	}
     
     # check needed param
     if ( !$Param{New}->{'Date'} ) {
@@ -79,6 +83,8 @@ sub Run {
 
     my $TicketObject = $Kernel::OM->Get('Kernel::System::Ticket');
 
+	
+
     # get ticket data
     my %Ticket = $TicketObject->TicketGet(
         %Param,
@@ -90,6 +96,24 @@ sub Run {
 #$VAR66 = '1';
     my $ChangeID = $Ticket{ChangeBy};
     my %User;
+
+	if($TicketObject->TicketCheckForProcessType(
+        TicketID => $Ticket{TicketID},
+    )){
+
+		my $DynamicFieldChangedBy = $Kernel::OM->Get('Kernel::System::DynamicField')->DynamicFieldGet(
+			Name => 'ProcessManagementUserChangeID'
+		);
+
+		$ChangeID = $DynamicFieldBackendObject->ValueGet(
+			DynamicFieldConfig => $DynamicFieldChangedBy,      # complete config of the DynamicField
+			ObjectID           => $Ticket{TicketID},                # ID of the current object that the field
+															# must be linked to, e. g. TicketID
+		);
+
+
+	} 
+
     if($ChangeID){
 	 %User = $UserObject->GetUserData(
          	UserID => $ChangeID,
@@ -101,7 +125,7 @@ sub Run {
 	my $DynamicFieldDate = $DynamicFieldObject->DynamicFieldGet(
 		Name => $Param{New}->{Date},
 	);
-	if($Param{New}->{Overwrite} eq "Yes"){
+	if($Overwrite eq "Yes"){
 		my $Success = $DynamicFieldBackendObject->ValueSet(
 			DynamicFieldConfig => $DynamicFieldDate,      # complete config of the DynamicField
 			 ObjectID           => $Ticket{TicketID},                # ID of the current object that the field
